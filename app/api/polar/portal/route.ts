@@ -1,7 +1,6 @@
 import { CustomerPortal } from "@polar-sh/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { polar } from "@/lib/polar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,20 +19,11 @@ const portalHandler = CustomerPortal({
     const user = await getCurrentUser();
 
     if (!user) {
-      return "";
+      throw new Error("Authentication required.");
     }
 
-    try {
-      // Your checkout uses user.id as customerExternalId.
-      // Resolve that external ID to Polar's real customer ID.
-      const customer =
-        await polar.customers.getExternal(user.id);
-
-      return customer.id;
-    } catch (error) {
-      console.error("POLAR CUSTOMER LOOKUP ERROR:", error);
-      return "";
-    }
+    // This MUST match customerExternalId used during checkout.
+    return user.id;
   },
 });
 
@@ -50,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (!process.env.POLAR_ACCESS_TOKEN) {
       return NextResponse.json(
         {
-          error: "Polar is not configured.",
+          error: "POLAR_ACCESS_TOKEN is not configured.",
         },
         { status: 500 }
       );
@@ -64,11 +54,8 @@ export async function GET(request: NextRequest) {
       {
         error:
           process.env.NODE_ENV === "development"
-            ? String(
-                error?.message ||
-                  "Unable to open the subscription portal."
-              )
-            : "Unable to open the subscription portal.",
+            ? String(error?.message || "Polar portal error.")
+            : "Unable to open Polar subscription portal.",
       },
       { status: 500 }
     );
