@@ -1,31 +1,25 @@
-import { CustomerPortal } from "@polar-sh/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { createPolar } from "@polar-sh/sdk/2026-04";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const portalHandler = CustomerPortal({
-  accessToken: process.env.POLAR_ACCESS_TOKEN,
-  returnUrl: `${
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-  }/editor`,
-  server:
-    process.env.POLAR_SERVER === "sandbox"
-      ? "sandbox"
-      : "production",
+function getPolar() {
+  const accessToken = process.env.POLAR_ACCESS_TOKEN?.trim();
 
-  getCustomerId: async () => {
-    const user = await getCurrentUser();
+  if (!accessToken) {
+    throw new Error("POLAR_ACCESS_TOKEN is missing.");
+  }
 
-    if (!user) {
-      throw new Error("Authentication required.");
-    }
-
-    // This MUST match customerExternalId used during checkout.
-    return user.id;
-  },
-});
+  return createPolar({
+    accessToken,
+    environment:
+      process.env.POLAR_SERVER === "sandbox"
+        ? "sandbox"
+        : "production",
+  });
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,31 +27,51 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.redirect(
-        new URL("/login?next=/editor", request.url)
+        new URL("/login", request.url)
       );
     }
 
-    if (!process.env.POLAR_ACCESS_TOKEN) {
-      return NextResponse.json(
-        {
-          error: "POLAR_ACCESS_TOKEN is not configured.",
-        },
-        { status: 500 }
+    const polar = getPolar();
+
+    /*
+     * IMPORTANT:
+     * Your checkout uses:
+     *
+     * customerExternalId = user.id
+     *
+     * Therefore we first resolve the Polar customer
+     * using that external ID.
+     */
+    const customer = await polar.customers.getExternal(user.id);
+
+    if (!customer) {
+      return NextResponse.redirect(
+        new URL("/pricing?error=customer-not-found", request.url)
       );
     }
 
-    return portalHandler(request);
+    /*
+     * Create a Polar customer portal session.
+     */
+    const session =
+      await polar.customerSessions.create({
+        customerId: customer.id,
+      });
+
+    /*
+     * Redirect the browser directly to Polar.
+     */
+    return NextResponse.redirect(session.url);
   } catch (error: any) {
-    console.error("POLAR PORTAL ERROR:", error);
+    console.error("POLAR PORTAL ERROR:", {
+      message: error?.message,
+      statusCode: error?.statusCode,
+      body: error?.body,
+      stack: error?.stack,
+    });
 
-    return NextResponse.json(
-      {
-        error:
-          process.env.NODE_ENV === "development"
-            ? String(error?.message || "Polar portal error.")
-            : "Unable to open Polar subscription portal.",
-      },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL("/pricing?error=portal", request.url)
     );
   }
 }
