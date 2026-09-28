@@ -6,10 +6,6 @@ export const dynamic = "force-dynamic";
 
 const webhookSecret = process.env.POLAR_WEBHOOK_SECRET?.trim();
 
-if (!webhookSecret) {
-  console.error("POLAR_WEBHOOK_SECRET is missing.");
-}
-
 export const POST = Webhooks({
   webhookSecret: webhookSecret || "",
 
@@ -18,43 +14,48 @@ export const POST = Webhooks({
       const data = payload?.data || {};
       const eventType = String(payload?.type || "unknown");
 
+      const externalCustomerId =
+        data?.customer?.external_id
+          ? String(data.customer.external_id)
+          : null;
+
+      const subscriptionId =
+        eventType.startsWith("subscription.")
+          ? String(data?.id || "")
+          : null;
+
+      const status =
+        data?.status
+          ? String(data.status)
+          : null;
+
+      console.log("POLAR WEBHOOK:", {
+        eventType,
+        eventId: payload?.id ?? null,
+        externalCustomerId,
+        subscriptionId,
+        status,
+      });
+
       await recordPolarWebhook({
         eventType,
-
-        eventId: data?.id
-          ? String(data.id)
+        eventId: payload?.id
+          ? String(payload.id)
           : null,
-
-        externalCustomerId:
-          data?.customer?.external_id
-            ? String(data.customer.external_id)
-            : null,
-
-        subscriptionId:
-          eventType.startsWith("subscription.")
-            ? data?.id
-              ? String(data.id)
-              : null
-            : null,
-
-        status:
-          data?.status
-            ? String(data.status)
-            : null,
-
-        // IMPORTANT: pass the object, not JSON.stringify(payload)
+        externalCustomerId,
+        subscriptionId,
+        status,
         payload,
       });
 
-      console.log("POLAR WEBHOOK PROCESSED:", eventType);
+      console.log("POLAR WEBHOOK SAVED");
     } catch (error) {
       console.error(
-        "POLAR WEBHOOK DATABASE ERROR:",
+        "POLAR WEBHOOK PERSISTENCE ERROR:",
         error
       );
 
-      // Don't throw here if you want the webhook
-      // verification to remain successful.
+      throw error;
     }
   },
 });
