@@ -9,35 +9,18 @@ const benefits = [
   "Adjustable box dimensions",
   "Custom box and background colors",
   "High-quality PNG export",
-  "Polar customer portal"
+  "Polar customer portal",
 ];
 
 export default function PricingPage() {
   const [loading, setLoading] = useState(false);
 
-  async function subscribe() {
+  function subscribe() {
     setLoading(true);
-    try {
-      const response = await fetch("/api/polar/checkout?plan=pro", {
-        redirect: "follow"
-      });
 
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
-      }
-
-      if (response.status === 401) {
-        window.location.href = "/login?next=/pricing";
-        return;
-      }
-
-      const data = await response.json().catch(() => ({}));
-      if (data.url) window.location.href = data.url;
-      else alert(data.error || "Unable to start checkout.");
-    } finally {
-      setLoading(false);
-    }
+    // Normal browser navigation.
+    // Do NOT use fetch() because the API redirects to Polar.
+    window.location.assign("/api/polar/checkout?plan=pro");
   }
 
   return (
@@ -47,7 +30,11 @@ export default function PricingPage() {
           <Sparkles className="h-4 w-4" />
           Simple recurring billing
         </div>
-        <h1 className="text-4xl font-black sm:text-5xl">BoxShot Pro</h1>
+
+        <h1 className="text-4xl font-black sm:text-5xl">
+          BoxShot Pro
+        </h1>
+
         <p className="mt-4 text-white/55">
           Subscribe through Polar and unlock the full mockup workflow.
         </p>
@@ -57,6 +44,7 @@ export default function PricingPage() {
         <p className="text-sm font-semibold text-violet-200">
           {process.env.NEXT_PUBLIC_PLAN_NAME || "BoxShot Pro"}
         </p>
+
         <div className="mt-3 flex items-end gap-2">
           <span className="text-5xl font-black">
             {process.env.NEXT_PUBLIC_PLAN_PRICE_LABEL || "$12/month"}
@@ -65,7 +53,10 @@ export default function PricingPage() {
 
         <div className="my-8 space-y-4">
           {benefits.map((benefit) => (
-            <div key={benefit} className="flex gap-3 text-sm text-white/75">
+            <div
+              key={benefit}
+              className="flex gap-3 text-sm text-white/75"
+            >
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
               {benefit}
             </div>
@@ -73,12 +64,18 @@ export default function PricingPage() {
         </div>
 
         <button
+          type="button"
           onClick={subscribe}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-black disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          Continue to Polar checkout
+          {loading && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
+
+          {loading
+            ? "Opening Polar..."
+            : "Continue to Polar checkout"}
         </button>
       </div>
     </main>
