@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 export const runtime = "nodejs";
 
 const portalHandler = CustomerPortal({
- accessToken: process.env.POLAR_ACCESS_TOKEN || "",
-  returnUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://drevastore.online/"}/editor`,
+  accessToken: process.env.POLAR_ACCESS_TOKEN,
+  returnUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/editor`,
   server: process.env.POLAR_SERVER === "sandbox" ? "sandbox" : "production",
   getCustomerId: async () => {
     const user = await getCurrentUser();
