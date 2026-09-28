@@ -3,7 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "BoxShot Studio",
+  title: "Reva BoxShot Studio",
   description: "Create polished 3D product box mockups in your browser with BoxShot Studio."
 };
 

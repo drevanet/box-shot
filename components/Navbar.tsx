@@ -29,7 +29,7 @@ export default function Navbar() {
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-black">
             <Box className="h-5 w-5" />
           </span>
-          BoxShot Studio
+          Reva BoxShot Studio
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
