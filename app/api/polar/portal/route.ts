@@ -34,38 +34,43 @@ export async function GET(request: NextRequest) {
     const polar = getPolar();
 
     /*
-     * IMPORTANT:
      * Your checkout uses:
      *
      * customerExternalId = user.id
      *
-     * Therefore we first resolve the Polar customer
-     * using that external ID.
-     */
-    const customer = await polar.customers.getExternal(user.id);
-
-    if (!customer) {
-      return NextResponse.redirect(
-        new URL("/pricing?error=customer-not-found", request.url)
-      );
-    }
-
-    /*
-     * Create a Polar customer portal session.
+     * Polar can create the customer portal session
+     * directly from that external customer ID.
      */
     const session =
       await polar.customerSessions.create({
-        customerId: customer.id,
+        external_customer_id: user.id,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.revabox.online"}/editor`,
       });
 
     /*
-     * Redirect the browser directly to Polar.
+     * Polar returns customerPortalUrl,
+     * NOT session.url.
      */
-    return NextResponse.redirect(session.url);
+    if (!session?.customer_portal_url) {
+      console.error(
+        "POLAR PORTAL: customerPortalUrl missing",
+        session
+      );
+
+      return NextResponse.redirect(
+        new URL("/pricing?error=portal-url", request.url)
+      );
+    }
+
+    return NextResponse.redirect(
+      session.customer_portal_url
+    );
   } catch (error: any) {
     console.error("POLAR PORTAL ERROR:", {
       message: error?.message,
+      name: error?.name,
       statusCode: error?.statusCode,
+      status: error?.status,
       body: error?.body,
       stack: error?.stack,
     });
