@@ -73,6 +73,38 @@ async function initializeDatabase() {
       `;
 
       // ============================================================
+      // DESIGNS
+      // ============================================================
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS designs (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL UNIQUE,
+
+          front TEXT,
+          back TEXT,
+          left_face TEXT,
+          right_face TEXT,
+          top_face TEXT,
+          bottom_face TEXT,
+
+          width NUMERIC NOT NULL DEFAULT 28,
+          height NUMERIC NOT NULL DEFAULT 36,
+          depth NUMERIC NOT NULL DEFAULT 11,
+
+          rotation_y NUMERIC NOT NULL DEFAULT -22,
+
+          box_color TEXT NOT NULL DEFAULT '#f5f5f5',
+          background_color TEXT NOT NULL DEFAULT '#111111',
+
+          selected_face TEXT NOT NULL DEFAULT 'front',
+
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      // ============================================================
       // INDEXES
       // ============================================================
 
@@ -94,6 +126,11 @@ async function initializeDatabase() {
       await sql`
         CREATE INDEX IF NOT EXISTS idx_subscriptions_status
         ON subscriptions(status)
+      `;
+
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_designs_user_id
+        ON designs(user_id)
       `;
 
       initialized = true;
@@ -313,7 +350,7 @@ export async function getUserSubscription(userId: string) {
 }
 
 // ============================================================
-// CHECK IF USER HAS ACTIVE SUBSCRIPTION
+// CHECK ACTIVE SUBSCRIPTION
 // ============================================================
 
 export async function hasActiveSubscription(userId: string) {
@@ -332,6 +369,149 @@ export async function hasActiveSubscription(userId: string) {
   `;
 
   return rows.length > 0;
+}
+
+// ============================================================
+// SAVE USER DESIGN
+// ============================================================
+
+export async function saveUserDesign(data: {
+  id: string;
+  userId: string;
+
+  front: string | null;
+  back: string | null;
+  left: string | null;
+  right: string | null;
+  top: string | null;
+  bottom: string | null;
+
+  width: number;
+  height: number;
+  depth: number;
+
+  rotationY: number;
+
+  boxColor: string;
+  backgroundColor: string;
+
+  selectedFace: string;
+}) {
+  await initializeDatabase();
+
+  await sql`
+    INSERT INTO designs (
+      id,
+      user_id,
+
+      front,
+      back,
+      left_face,
+      right_face,
+      top_face,
+      bottom_face,
+
+      width,
+      height,
+      depth,
+
+      rotation_y,
+
+      box_color,
+      background_color,
+
+      selected_face,
+
+      updated_at
+    )
+    VALUES (
+      ${data.id},
+      ${data.userId},
+
+      ${data.front},
+      ${data.back},
+      ${data.left},
+      ${data.right},
+      ${data.top},
+      ${data.bottom},
+
+      ${data.width},
+      ${data.height},
+      ${data.depth},
+
+      ${data.rotationY},
+
+      ${data.boxColor},
+      ${data.backgroundColor},
+
+      ${data.selectedFace},
+
+      NOW()
+    )
+    ON CONFLICT (user_id)
+    DO UPDATE SET
+
+      front = EXCLUDED.front,
+      back = EXCLUDED.back,
+      left_face = EXCLUDED.left_face,
+      right_face = EXCLUDED.right_face,
+      top_face = EXCLUDED.top_face,
+      bottom_face = EXCLUDED.bottom_face,
+
+      width = EXCLUDED.width,
+      height = EXCLUDED.height,
+      depth = EXCLUDED.depth,
+
+      rotation_y = EXCLUDED.rotation_y,
+
+      box_color = EXCLUDED.box_color,
+      background_color = EXCLUDED.background_color,
+
+      selected_face = EXCLUDED.selected_face,
+
+      updated_at = NOW()
+  `;
+}
+
+// ============================================================
+// GET USER DESIGN
+// ============================================================
+
+export async function getUserDesign(userId: string) {
+  await initializeDatabase();
+
+  const rows = await sql`
+    SELECT
+      id,
+      user_id,
+
+      front,
+      back,
+      left_face,
+      right_face,
+      top_face,
+      bottom_face,
+
+      width,
+      height,
+      depth,
+
+      rotation_y,
+
+      box_color,
+      background_color,
+
+      selected_face,
+
+      created_at,
+      updated_at
+
+    FROM designs
+    WHERE user_id = ${userId}
+    LIMIT 1
+  `;
+
+  return rows[0] || null;
 }
 
 // ============================================================
